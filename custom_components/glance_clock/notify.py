@@ -5,7 +5,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN, GLANCE_SERVICE_UUID, SETTINGS_CHARACTERISTIC_UUID
 from bleak_retry_connector import BleakClientWithServiceCache
-from .glance_pb2 import Settings, ForecastScene  # type: ignore
+from .glance_pb2 import ForecastScene  # type: ignore
+from .settings import DEFAULT_SETTINGS, merge_settings, settings_from_dict, settings_to_dict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -310,18 +311,7 @@ class GlanceClockNotificationService(BaseNotificationService):
                 _LOGGER.debug(f"  Protobuf attempt: {protobuf_data.hex()}")
                 return None
 
-            # Convert to dictionary
-            settings_dict = {
-                "nightModeEnabled": settings.nightModeEnabled,
-                "pointsAlwaysEnabled": settings.pointsAlwaysEnabled,
-                "displayBrightness": settings.displayBrightness,
-                "timeModeEnable": settings.timeModeEnable,
-                "timeFormat12": settings.timeFormat12,
-                "permanentDND": settings.permanentDND,
-                "permanentMute": settings.permanentMute,
-                "dateFormat": settings.dateFormat,
-                "mgrUserActivityTimeout": settings.mgrUserActivityTimeout,
-            }
+            settings_dict = settings_to_dict(settings)
 
             _LOGGER.debug("Successfully read settings from device")
 
@@ -415,36 +405,12 @@ class GlanceClockNotificationService(BaseNotificationService):
             current_settings = await self.async_read_current_settings()
             if not current_settings:
                 # If we can't read current settings, use default values
-                current_settings = {
-                    "nightModeEnabled": True,
-                    "pointsAlwaysEnabled": False,
-                    "displayBrightness": 128,
-                    "timeModeEnable": True,
-                    "timeFormat12": False,
-                    "permanentDND": False,
-                    "permanentMute": False,
-                    "dateFormat": 0,
-                    "mgrUserActivityTimeout": 600,
-                }
+                current_settings = DEFAULT_SETTINGS
                 _LOGGER.debug("Using default settings as base")
 
             # Update only the specified settings
-            updated_settings = current_settings.copy()
-            updated_settings.update(settings_data)
-
-            # Create protobuf Settings message
-            settings = Settings()
-            
-            # Map the dictionary to protobuf fields
-            settings.nightModeEnabled = updated_settings.get("nightModeEnabled", True)
-            settings.pointsAlwaysEnabled = updated_settings.get("pointsAlwaysEnabled", False)
-            settings.displayBrightness = updated_settings.get("displayBrightness", 128)
-            settings.timeModeEnable = updated_settings.get("timeModeEnable", True)
-            settings.timeFormat12 = updated_settings.get("timeFormat12", False)
-            settings.permanentDND = updated_settings.get("permanentDND", False)
-            settings.permanentMute = updated_settings.get("permanentMute", False)
-            settings.dateFormat = updated_settings.get("dateFormat", 0)
-            settings.mgrUserActivityTimeout = updated_settings.get("mgrUserActivityTimeout", 600)
+            updated_settings = merge_settings(current_settings, settings_data)
+            settings = settings_from_dict(updated_settings)
 
             # Serialize the settings
             settings_bytes = settings.SerializeToString()
@@ -460,6 +426,7 @@ class GlanceClockNotificationService(BaseNotificationService):
             
             if success:
                 _LOGGER.info("Settings written successfully")
+                self._connection_manager.cache_settings(updated_settings)
                 
                 # If this was a brightness change, schedule brightness scene stop after 3 seconds
                 # (like the web app does)

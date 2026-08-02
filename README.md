@@ -1,8 +1,8 @@
 # Glance Clock Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/release/PorlyBe/glance_clock_ha.svg)](https://github.com/PorlyBe/glance_clock_ha/releases)
-[![License](https://img.shields.io/github/license/PorlyBe/glance_clock_ha.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/mrmstn/glance_clock_ha.svg)](https://github.com/mrmstn/glance_clock_ha/releases)
+[![License](https://img.shields.io/github/license/mrmstn/glance_clock_ha.svg)](LICENSE)
 
 Home Assistant custom integration for Glance Clock devices via Bluetooth.
 
@@ -13,6 +13,8 @@ Home Assistant custom integration for Glance Clock devices via Bluetooth.
 - 🔔 **Send Notifications** - Display custom messages with animations and sounds
 - 💡 **Light Control** - Adjust brightness and power state
 - 🔄 **Switch Controls** - Toggle various clock features (time mode, night mode, points display)
+- 🔇 **Sound Controls** - Control permanent mute, DND, and recurring quiet-hour schedules
+- ⏱️ **Clock Commands** - Stop timers and alarms or navigate stored scenes
 - 🎛️ **Select Options** - Choose different display modes and date formats
 - 📊 **Sensor Data** - Monitor battery level and device information
 - 🌤️ **Weather Forecast** - Send 24-hour weather data with color gradients
@@ -111,7 +113,7 @@ Your Glance Clock is now paired and ready to add to Home Assistant.
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add the repository URL: `https://github.com/PorlyBe/glance_clock_ha`
+5. Add the repository URL: `https://github.com/mrmstn/glance_clock_ha`
 6. Select category "Integration"
 7. Click "Add"
 8. Find "Glance Clock" in the integration list and click "Download"
@@ -145,7 +147,9 @@ If the device doesn't appear automatically, you can manually add it:
 Once configured, the integration provides:
 
 - **Light** - Control brightness and power state
-- **Switches** - Time Mode, Night Mode, Always Show Points
+- **Switches** - Time Mode, Night Mode, Always Show Points, Mute, DND, and quiet schedules
+- **Numbers** - Activity timeout and DND/silent schedule hours
+- **Buttons** - Stop Timer, Stop Alarm, Previous Scene, and Next Scene
 - **Selects** - Date Format options
 - **Sensors** - Battery level percentage
 - **Notify** - Send notifications via `notify.glance_clock`
@@ -197,11 +201,26 @@ Configure display settings on your Glance Clock.
 service: glance_clock.update_display_settings
 data:
   nightModeEnabled: true
+  permanentMute: false
+  permanentDND: false
+  mgrUserActivityTimeout: 600
+  dnd:
+    recurring: true
+    fromHour: 22
+    tillHour: 7
+  silent:
+    recurring: true
+    fromHour: 23
+    tillHour: 6
   displayBrightness: 128
   timeModeEnable: true
   timeFormat12: false
   dateFormat: 1
 ```
+
+Schedule hours are whole local hours (`0` through `23`); the reverse-engineered
+firmware protocol does not expose schedule minutes. Destructive pairing/reset
+commands and commands with unknown semantics are intentionally not exposed.
 
 ### Send Weather Forecast
 

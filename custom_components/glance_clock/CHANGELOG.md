@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-08-02
+### Added
+- Home Assistant controls for permanent mute and permanent DND.
+- Recurring DND and silent schedule controls, including start/end hours.
+- User activity timeout control.
+- Safe buttons and services to stop timers/alarms and navigate scenes.
+- Complete sound and animation choices in the Send Notice action UI.
+
+### Fixed
+- Preserve nested and previously written settings when updating a single value.
+- Refresh the shared device settings cache after successful writes.
+
 ## [1.2.0] - 2025-11-14
 ### Added
 - Support for icons in notification text using `[icon:CODE]` syntax. See `ICONS.md` for available codes.

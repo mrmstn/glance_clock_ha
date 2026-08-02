@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
@@ -29,9 +30,101 @@ async def async_setup_entry(
         GlanceClockTimePointsSwitch(config_entry, mac_address, name, connection_manager),
         GlanceClockTimeModeSwitch(config_entry, mac_address, name, connection_manager),
         GlanceClockTimeFormatSwitch(config_entry, mac_address, name, connection_manager),
+        GlanceClockSettingsSwitch(
+            config_entry, mac_address, name, connection_manager,
+            "Mute", "permanent_mute", "permanentMute", "mdi:volume-off",
+        ),
+        GlanceClockSettingsSwitch(
+            config_entry, mac_address, name, connection_manager,
+            "Do Not Disturb", "permanent_dnd", "permanentDND", "mdi:minus-circle-off",
+        ),
+        GlanceClockSettingsSwitch(
+            config_entry, mac_address, name, connection_manager,
+            "DND Schedule", "dnd_schedule", ("dnd", "recurring"), "mdi:calendar-clock",
+        ),
+        GlanceClockSettingsSwitch(
+            config_entry, mac_address, name, connection_manager,
+            "Silent Schedule", "silent_schedule", ("silent", "recurring"), "mdi:volume-clock",
+        ),
     ]
 
     async_add_entities(entities)
+
+
+class GlanceClockSettingsSwitch(GlanceClockEntity, SwitchEntity):
+    """A boolean setting exposed as a Home Assistant switch."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        config_entry,
+        mac_address,
+        device_name,
+        connection_manager,
+        label,
+        unique_suffix,
+        setting,
+        icon,
+    ):
+        super().__init__(config_entry, mac_address, device_name, connection_manager)
+        self._attr_name = f"{device_name} {label}"
+        self._attr_unique_id = f"{mac_address}_{unique_suffix}"
+        self._attr_icon = icon
+        self._setting = setting
+        self._is_on = None
+        self._available = False
+
+    @property
+    def is_on(self) -> bool | None:
+        return self._is_on
+
+    @property
+    def available(self) -> bool:
+        return self._available and self._connection_manager.is_connected
+
+    def _value_from(self, settings):
+        if isinstance(self._setting, tuple):
+            return settings.get(self._setting[0], {}).get(self._setting[1])
+        return settings.get(self._setting)
+
+    def _change(self, value):
+        if isinstance(self._setting, tuple):
+            return {self._setting[0]: {self._setting[1]: value}}
+        return {self._setting: value}
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        if await self._write_settings(self._change(True)):
+            self._is_on = True
+            self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        if await self._write_settings(self._change(False)):
+            self._is_on = False
+            self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._connection_manager.add_connection_callback(self._on_connection_established)
+        await self.async_update()
+
+    async def _on_connection_established(self) -> None:
+        await self.async_update()
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        settings = await self._read_settings()
+        if settings is not None:
+            value = self._value_from(settings)
+            if value is not None:
+                self._is_on = bool(value)
+                self._available = True
+                return
+        self._available = self._connection_manager.is_connected
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._connection_manager.remove_connection_callback(self._on_connection_established)
+        await super().async_will_remove_from_hass()
 
 
 class GlanceClockNightModeSwitch(GlanceClockEntity, SwitchEntity):

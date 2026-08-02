@@ -1,11 +1,13 @@
 """Base entity for Glance Clock devices."""
 import logging
+from copy import deepcopy
 from datetime import datetime, timedelta
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
+from .settings import DEFAULT_SETTINGS, merge_settings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,17 +80,7 @@ class GlanceClockEntity(Entity):
 
     def _get_default_settings(self) -> dict:
         """Get default settings when device settings can't be read."""
-        return {
-            "nightModeEnabled": True,
-            "pointsAlwaysEnabled": False,
-            "displayBrightness": 128,
-            "timeModeEnable": True,
-            "timeFormat12": False,
-            "permanentDND": False,
-            "permanentMute": False,
-            "dateFormat": 0,  # DateDisabled
-            "mgrUserActivityTimeout": 600,
-        }
+        return deepcopy(DEFAULT_SETTINGS)
 
     async def _get_settings_with_memory(self) -> dict:
         """Get settings with memory of user changes."""
@@ -122,7 +114,7 @@ class GlanceClockEntity(Entity):
                         self._cached_settings = self._get_default_settings()
                     
                     # Update local cache with the new settings
-                    self._cached_settings.update(settings_data)
+                    self._cached_settings = merge_settings(self._cached_settings, settings_data)
                     self._last_settings_read = datetime.now()
                     _LOGGER.debug(f"Settings cache updated with: {settings_data}")
                     _LOGGER.info("Settings written successfully - entities are now available")

@@ -9,6 +9,7 @@ from .refresh import handle_refresh_entities
 from .notice import handle_send_notice
 from .forecast import handle_send_forecast
 from .timer import handle_send_timer
+from .commands import SAFE_COMMANDS, handle_safe_command
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +35,9 @@ async def async_register_services(hass: HomeAssistant, entry: ConfigEntry):
     async def _handle_send_timer(call: ServiceCall):
         await handle_send_timer(hass, entry, call)
 
+    async def _handle_safe_command(call: ServiceCall):
+        await handle_safe_command(hass, entry, call)
+
     # Register services
     hass.services.async_register(
         DOMAIN, "update_display_settings", _handle_update_display_settings
@@ -53,6 +57,8 @@ async def async_register_services(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_register(
         DOMAIN, "send_timer", _handle_send_timer
     )
+    for service in SAFE_COMMANDS:
+        hass.services.async_register(DOMAIN, service, _handle_safe_command)
 
     _LOGGER.info("All Glance Clock services registered")
 
@@ -67,4 +73,6 @@ async def async_unregister_services(hass: HomeAssistant):
         hass.services.async_remove(DOMAIN, "send_notice")
         hass.services.async_remove(DOMAIN, "send_forecast")
         hass.services.async_remove(DOMAIN, "send_timer")
+        for service in SAFE_COMMANDS:
+            hass.services.async_remove(DOMAIN, service)
         _LOGGER.info("All Glance Clock services unregistered")
