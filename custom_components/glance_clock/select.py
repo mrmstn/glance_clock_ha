@@ -11,8 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     DOMAIN,
     FACTORY_DEMO_SCENES,
-    FACTORY_DEMO_SCENES_REVERSE,
     SCENE_DATA_CHARACTERISTIC_UUID,
+    decode_factory_demo_scene,
 )
 from .entity import GlanceClockEntity
 
@@ -214,7 +214,7 @@ class GlanceClockFactoryDemoSelect(GlanceClockEntity, SelectEntity):
                 SCENE_DATA_CHARACTERISTIC_UUID
             )
             if data:
-                self._attr_current_option = FACTORY_DEMO_SCENES_REVERSE.get(data[0])
+                self._attr_current_option = decode_factory_demo_scene(data[0])
                 self.async_write_ha_state()
         except Exception as error:
             _LOGGER.debug("Could not read factory demo selection: %s", error)

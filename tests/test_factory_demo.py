@@ -3,6 +3,7 @@
 from custom_components.glance_clock.const import (
     FACTORY_DEMO_SCENES,
     FACTORY_DEMO_SCENES_REVERSE,
+    decode_factory_demo_scene,
 )
 
 
@@ -18,3 +19,9 @@ def test_every_factory_demo_value_round_trips() -> None:
 
 def test_repeat_all_uses_unsigned_byte_value() -> None:
     assert bytes([FACTORY_DEMO_SCENES["Repeat All"]]) == b"\xff"
+    assert decode_factory_demo_scene(0xFF) == "Repeat All"
+
+
+def test_decodes_live_inactive_scene_readbacks() -> None:
+    assert decode_factory_demo_scene(0x80) == "Off"
+    assert decode_factory_demo_scene(0x81) == "Calendar"

@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Correct scene commands 30/31 to Stop Scenes and Start Scenes.
 - Encode basic commands using the official app's four-byte header.
+- Normalize the Scene characteristic's observed inactive `0x80` status bit.
 
 ## [1.3.0] - 2026-08-02
 ### Added

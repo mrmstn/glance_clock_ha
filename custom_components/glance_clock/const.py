@@ -31,6 +31,13 @@ FACTORY_DEMO_SCENES_REVERSE = {
     value: name for name, value in FACTORY_DEMO_SCENES.items()
 }
 
+
+def decode_factory_demo_scene(value: int) -> str | None:
+    """Decode a Scene byte, including the firmware's inactive 0x80 flag."""
+    if value == FACTORY_DEMO_SCENES["Repeat All"]:
+        return "Repeat All"
+    return FACTORY_DEMO_SCENES_REVERSE.get(value & 0x7F)
+
 # Notification constants (matching protobuf enums)
 ANIMATIONS = {
     "none": 0,
