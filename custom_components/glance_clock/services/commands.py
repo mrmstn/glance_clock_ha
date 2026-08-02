@@ -12,8 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 SAFE_COMMANDS = {
     "stop_timer": 10,
     "stop_alarm": 20,
-    "previous_scene": 30,
-    "next_scene": 31,
+    "stop_scenes": 30,
+    "start_scenes": 31,
 }
 
 
@@ -23,7 +23,7 @@ async def send_safe_command(
     """Send one of the explicitly allow-listed non-destructive commands."""
     command = SAFE_COMMANDS[command_name]
     manager = hass.data[DOMAIN][entry.entry_id]["connection_manager"]
-    success = await manager.send_command(bytes([command]))
+    success = await manager.send_command(bytes([command, 0, 0, 0]))
     if not success:
         _LOGGER.error("Failed to send Glance Clock command: %s", command_name)
     return success

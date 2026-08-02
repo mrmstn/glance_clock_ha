@@ -4,10 +4,16 @@ import asyncio
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    FACTORY_DEMO_SCENES,
+    FACTORY_DEMO_SCENES_REVERSE,
+    SCENE_DATA_CHARACTERISTIC_UUID,
+)
 from .entity import GlanceClockEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +43,7 @@ async def async_setup_entry(
 
     entities = [
         GlanceClockDateFormatSelect(config_entry, mac_address, name, connection_manager),
+        GlanceClockFactoryDemoSelect(config_entry, mac_address, name, connection_manager),
     ]
 
     async_add_entities(entities)
@@ -155,3 +162,59 @@ class GlanceClockDateFormatSelect(GlanceClockEntity, SelectEntity):
         if self._connection_manager:
             self._connection_manager.remove_connection_callback(self._on_connection_established)
         await super().async_will_remove_from_hass()
+
+
+class GlanceClockFactoryDemoSelect(GlanceClockEntity, SelectEntity):
+    """Select factory demonstration scenes found in the official app."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:movie-open-play"
+
+    def __init__(self, config_entry, mac_address, device_name, connection_manager):
+        super().__init__(config_entry, mac_address, device_name, connection_manager)
+        self._attr_name = f"{device_name} Factory Demo"
+        self._attr_unique_id = f"{mac_address}_factory_demo"
+        self._attr_options = list(FACTORY_DEMO_SCENES)
+        self._attr_current_option = None
+
+    @property
+    def available(self) -> bool:
+        """Return whether the clock has an active connection."""
+        return self._connection_manager.is_connected
+
+    async def async_added_to_hass(self) -> None:
+        """Read the current demo byte whenever BLE connects."""
+        await super().async_added_to_hass()
+        self._connection_manager.add_connection_callback(self._refresh_scene)
+        if self._connection_manager.is_connected:
+            await self._refresh_scene()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the BLE connection callback."""
+        self._connection_manager.remove_connection_callback(self._refresh_scene)
+        await super().async_will_remove_from_hass()
+
+    async def async_select_option(self, option: str) -> None:
+        """Write one verified factory-scene ID to the Scene characteristic."""
+        if option not in FACTORY_DEMO_SCENES:
+            raise ValueError(f"Unknown factory demo option: {option}")
+
+        value = FACTORY_DEMO_SCENES[option]
+        if await self._connection_manager.write_characteristic(
+            SCENE_DATA_CHARACTERISTIC_UUID, bytes([value])
+        ):
+            self._attr_current_option = option
+            self.async_write_ha_state()
+            _LOGGER.info("Factory demo set to %s (%d)", option, value)
+
+    async def _refresh_scene(self) -> None:
+        """Read and decode the currently selected factory demo."""
+        try:
+            data = await self._connection_manager.read_characteristic(
+                SCENE_DATA_CHARACTERISTIC_UUID
+            )
+            if data:
+                self._attr_current_option = FACTORY_DEMO_SCENES_REVERSE.get(data[0])
+                self.async_write_ha_state()
+        except Exception as error:
+            _LOGGER.debug("Could not read factory demo selection: %s", error)

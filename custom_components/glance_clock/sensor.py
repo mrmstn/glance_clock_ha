@@ -14,6 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
+from .state import ClockState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,9 +50,70 @@ async def async_setup_entry(
         mac_address, name, connection_manager, entry
     )
     entities.append(battery_sensor)
+    entities.append(
+        GlanceClockStateSensor(mac_address, name, connection_manager, entry)
+    )
 
     async_add_entities(entities)
     _LOGGER.info(f"✅ Added {len(entities)} sensor entities for {name}")
+
+
+class GlanceClockStateSensor(SensorEntity):
+    """Expose the raw and decoded State characteristic for diagnostics."""
+
+    _attr_should_poll = False
+    _attr_icon = "mdi:memory"
+
+    def __init__(self, mac_address, device_name, connection_manager, entry):
+        self._mac_address = mac_address
+        self._device_name = device_name
+        self._connection_manager = connection_manager
+        self._entry = entry
+        self._state: ClockState | None = connection_manager.state
+        self._attr_name = f"{device_name} State Word"
+        self._attr_unique_id = f"{mac_address}_state_word"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the clock device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._mac_address)},
+            connections={("bluetooth", self._mac_address)},
+            name=self._device_name,
+            manufacturer="Glance",
+            model="Clock",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the state word in an unambiguous hexadecimal form."""
+        return f"0x{self._state.word:04x}" if self._state is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        """Return all flags decoded by the official application."""
+        return self._state.as_attributes() if self._state is not None else None
+
+    @property
+    def available(self) -> bool:
+        """Return whether a live connection and State sample are available."""
+        return self._connection_manager.is_connected and self._state is not None
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to connection-manager State updates."""
+        await super().async_added_to_hass()
+        self._connection_manager.add_state_callback(self._handle_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unsubscribe from State updates."""
+        self._connection_manager.remove_state_callback(self._handle_state)
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _handle_state(self, state: ClockState) -> None:
+        """Store and publish a decoded State update."""
+        self._state = state
+        self.async_write_ha_state()
 
 
 class GlanceClockBatterySensor(SensorEntity):

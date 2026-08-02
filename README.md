@@ -149,9 +149,9 @@ Once configured, the integration provides:
 - **Light** - Control brightness and power state
 - **Switches** - Time Mode, Night Mode, Always Show Points, Mute, DND, and quiet schedules
 - **Numbers** - Activity timeout and DND/silent schedule hours
-- **Buttons** - Stop Timer, Stop Alarm, Previous Scene, and Next Scene
-- **Selects** - Date Format options
-- **Sensors** - Battery level percentage
+- **Buttons** - Stop Timer, Stop Alarm, Stop Scenes, and Start Scenes
+- **Selects** - Date Format and firmware 1.6.6+ Factory Demo options
+- **Sensors** - Battery level percentage and decoded BLE State Word diagnostics
 - **Notify** - Send notifications via `notify.glance_clock`
 
 

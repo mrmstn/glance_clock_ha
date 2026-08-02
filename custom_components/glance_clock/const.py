@@ -11,6 +11,26 @@ SETTINGS_CHARACTERISTIC_UUID = "5075fb2e-1e0e-11e7-93ae-92361f002671"
 SCENE_DATA_CHARACTERISTIC_UUID = "5075ffac-1e0e-11e7-93ae-92361f002671"
 SCENE_STATE_DATA_CHARACTERISTIC_UUID = "5075fc78-1e0e-11e7-93ae-92361f002671"
 
+# Factory/demo scene IDs used by the official Android app for firmware 1.6.6+.
+# Firmware 1.6.7 has been verified on the connected clock.
+FACTORY_DEMO_SCENES = {
+    "Off": 0,
+    "Calendar": 1,
+    "Notification": 2,
+    "Call": 3,
+    "Weather": 4,
+    "Rain Forecast": 5,
+    "Smile": 6,
+    "Temperature Forecast": 7,
+    "Alarm": 8,
+    "Timer": 9,
+    "Interval Timer": 10,
+    "Repeat All": 255,
+}
+FACTORY_DEMO_SCENES_REVERSE = {
+    value: name for name, value in FACTORY_DEMO_SCENES.items()
+}
+
 # Notification constants (matching protobuf enums)
 ANIMATIONS = {
     "none": 0,

@@ -307,13 +307,13 @@ stop_alarm:
   name: "Stop Alarm"
   description: "Stop the alarm currently sounding on the Glance Clock"
 
-previous_scene:
-  name: "Previous Scene"
-  description: "Move to the previous scene slot on the Glance Clock"
+stop_scenes:
+  name: "Stop Scenes"
+  description: "Stop the active scene sequence on the Glance Clock"
 
-next_scene:
-  name: "Next Scene"
-  description: "Move to the next scene slot on the Glance Clock"
+start_scenes:
+  name: "Start Scenes"
+  description: "Start the configured scene sequence on the Glance Clock"
 
 send_forecast:
   name: "Send Weather Forecast"

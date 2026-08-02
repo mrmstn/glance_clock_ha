@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-08-03
+### Added
+- Factory Demo selector for the scene IDs used by firmware 1.6.6 and newer.
+- State Word diagnostic sensor with decoded flags and live notifications.
+
+### Fixed
+- Correct scene commands 30/31 to Stop Scenes and Start Scenes.
+- Encode basic commands using the official app's four-byte header.
+
 ## [1.3.0] - 2026-08-02
 ### Added
 - Home Assistant controls for permanent mute and permanent DND.

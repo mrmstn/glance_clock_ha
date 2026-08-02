@@ -5,7 +5,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.components import bluetooth
 from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
 
-from ..const import GLANCE_CHARACTERISTIC_UUID
+from ..const import (
+    GLANCE_CHARACTERISTIC_UUID,
+    SCENE_STATE_DATA_CHARACTERISTIC_UUID,
+)
+from ..state import ClockState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +34,9 @@ class GlanceClockConnectionManager:
         self._max_reconnect_attempts = 3
         self._is_connecting = False
         self._connection_callbacks = []
+        self._state_callbacks = []
+        self._state = None
+        self._state_notify_active = False
         self._cached_settings = None
         self._settings_read_time = None
 
@@ -64,6 +71,61 @@ class GlanceClockConnectionManager:
                     callback()
             except Exception as e:
                 _LOGGER.error(f"Error in connection callback: {e}")
+
+    def add_state_callback(self, callback):
+        """Register a callback for decoded State characteristic updates."""
+        self._state_callbacks.append(callback)
+        if self._state is not None:
+            callback(self._state)
+
+    def remove_state_callback(self, callback):
+        """Remove a State characteristic callback."""
+        if callback in self._state_callbacks:
+            self._state_callbacks.remove(callback)
+
+    @property
+    def state(self) -> ClockState | None:
+        """Return the most recently decoded clock state."""
+        return self._state
+
+    def _set_state(self, data: bytes | bytearray) -> None:
+        """Decode a State value and notify listeners."""
+        try:
+            state = ClockState.from_bytes(data)
+        except ValueError as error:
+            _LOGGER.warning("Invalid State value from %s: %s", self.name, error)
+            return
+
+        self._state = state
+        _LOGGER.debug("State update from %s: 0x%04x", self.name, state.word)
+        for callback in list(self._state_callbacks):
+            try:
+                callback(state)
+            except Exception as error:
+                _LOGGER.error("Error in State callback: %s", error)
+
+    def _handle_state_notification(self, _sender, data: bytearray) -> None:
+        """Handle a Bleak State notification."""
+        self._set_state(data)
+
+    async def _setup_state_monitor(self) -> None:
+        """Read State once and subscribe to subsequent changes."""
+        if not self.client or not self.client.is_connected:
+            return
+        try:
+            data = await self.client.read_gatt_char(
+                SCENE_STATE_DATA_CHARACTERISTIC_UUID
+            )
+            self._set_state(data)
+            await self.client.start_notify(
+                SCENE_STATE_DATA_CHARACTERISTIC_UUID,
+                self._handle_state_notification,
+            )
+            self._state_notify_active = True
+            _LOGGER.info("Subscribed to State notifications for %s", self.name)
+        except Exception as error:
+            self._state_notify_active = False
+            _LOGGER.warning("Could not monitor State for %s: %s", self.name, error)
 
     # Settings Cache Management
 
@@ -124,8 +186,14 @@ class GlanceClockConnectionManager:
             self._connection_task = None
 
         if self.client and self.client.is_connected:
+            if self._state_notify_active:
+                try:
+                    await self.client.stop_notify(SCENE_STATE_DATA_CHARACTERISTIC_UUID)
+                except Exception as error:
+                    _LOGGER.debug("Could not stop State notifications: %s", error)
             await self.client.disconnect()
             self.client = None
+        self._state_notify_active = False
 
         _LOGGER.debug(f"Connection manager stopped for {self.name}")
 
@@ -219,6 +287,7 @@ class GlanceClockConnectionManager:
             if self.client and self.client.is_connected:
                 _LOGGER.info(f"Successfully connected to {self.name}")
                 self._reconnect_attempts = 0
+                await self._setup_state_monitor()
                 await self._notify_connection_callbacks()
             else:
                 raise Exception("Failed to establish connection")
@@ -252,6 +321,7 @@ class GlanceClockConnectionManager:
             except Exception as e:
                 _LOGGER.debug(f"Error during disconnect: {e}")
         self.client = None
+        self._state_notify_active = False
 
     def _on_disconnect(self, client):
         """Handle unexpected disconnection callback from Bleak.
@@ -261,6 +331,7 @@ class GlanceClockConnectionManager:
         """
         _LOGGER.warning(f"{self.name} disconnected unexpectedly")
         self.client = None
+        self._state_notify_active = False
         # Connection maintenance loop will handle reconnection
 
     # Command Interface
@@ -312,6 +383,34 @@ class GlanceClockConnectionManager:
         except Exception as e:
             _LOGGER.error(f"Failed to send command to {self.name}: {e}")
             await self._disconnect()
+            return False
+
+    async def write_characteristic(
+        self, characteristic_uuid: str, data: bytes
+    ) -> bool:
+        """Write bytes to a specific Glance characteristic."""
+        if not self.client or not self.client.is_connected:
+            _LOGGER.debug(
+                "No active connection to %s, attempting to connect", self.name
+            )
+            await self._connect()
+
+        if not self.client or not self.client.is_connected:
+            _LOGGER.error("Failed to connect before characteristic write")
+            return False
+
+        try:
+            await self.client.write_gatt_char(
+                characteristic_uuid, data, response=True
+            )
+            return True
+        except Exception as error:
+            _LOGGER.error(
+                "Failed to write characteristic %s on %s: %s",
+                characteristic_uuid,
+                self.name,
+                error,
+            )
             return False
 
     async def read_characteristic(self, characteristic_uuid: str | None = None) -> bytes:
