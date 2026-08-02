@@ -67,5 +67,23 @@ class GlanceClockCommandButton(GlanceClockEntity, ButtonEntity):
     def available(self) -> bool:
         return self._connection_manager.is_connected
 
+    async def async_added_to_hass(self) -> None:
+        """Publish availability when the asynchronous BLE connection completes."""
+        await super().async_added_to_hass()
+        self._connection_manager.add_connection_callback(
+            self._handle_connection_established
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the BLE connection callback."""
+        self._connection_manager.remove_connection_callback(
+            self._handle_connection_established
+        )
+        await super().async_will_remove_from_hass()
+
+    def _handle_connection_established(self) -> None:
+        """Refresh Home Assistant after BLE becomes available."""
+        self.async_write_ha_state()
+
     async def async_press(self) -> None:
         await send_safe_command(self.hass, self._config_entry, self._command)
