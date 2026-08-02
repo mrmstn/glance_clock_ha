@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN, GLANCE_SERVICE_UUID, SETTINGS_CHARACTERISTIC_UUID
 from bleak_retry_connector import BleakClientWithServiceCache
 from .glance_pb2 import ForecastScene  # type: ignore
+from .protocol import build_basic_command
 from .settings import DEFAULT_SETTINGS, merge_settings, settings_from_dict, settings_to_dict
 
 _LOGGER = logging.getLogger(__name__)
@@ -337,7 +338,9 @@ class GlanceClockNotificationService(BaseNotificationService):
 
         try:
             # Send command 35 - equivalent to updateData() in web app
-            success = await self._connection_manager.send_command(bytes([35]))
+            success = await self._connection_manager.send_command(
+                build_basic_command(35)
+            )
             if success:
                 _LOGGER.debug("Update data command (35) sent successfully")
             else:
@@ -355,7 +358,9 @@ class GlanceClockNotificationService(BaseNotificationService):
 
         try:
             # Send command 61 - equivalent to brightnessSceneStart() in web app
-            success = await self._connection_manager.send_command(bytes([61]))
+            success = await self._connection_manager.send_command(
+                build_basic_command(61)
+            )
             if success:
                 _LOGGER.debug("Brightness scene start command (61) sent successfully")
             else:
@@ -373,7 +378,9 @@ class GlanceClockNotificationService(BaseNotificationService):
 
         try:
             # Send command 60 - equivalent to brightnessSceneStop() in web app
-            success = await self._connection_manager.send_command(bytes([60]))
+            success = await self._connection_manager.send_command(
+                build_basic_command(60)
+            )
             if success:
                 _LOGGER.debug("Brightness scene stop command (60) sent successfully")
             else:

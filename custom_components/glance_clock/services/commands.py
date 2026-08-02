@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..const import DOMAIN
+from ..protocol import build_basic_command
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ async def send_safe_command(
     """Send one of the explicitly allow-listed non-destructive commands."""
     command = SAFE_COMMANDS[command_name]
     manager = hass.data[DOMAIN][entry.entry_id]["connection_manager"]
-    success = await manager.send_command(bytes([command, 0, 0, 0]))
+    success = await manager.send_command(build_basic_command(command))
     if not success:
         _LOGGER.error("Failed to send Glance Clock command: %s", command_name)
     return success
