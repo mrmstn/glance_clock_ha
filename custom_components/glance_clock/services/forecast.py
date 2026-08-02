@@ -202,9 +202,10 @@ async def handle_send_rain_forecast(
             start_timestamp=_calculate_forecast_timestamp(),
             template=RAIN_TEMPLATE,
             scene_slot=2,
+            display_mode=8,
         )
         if success:
-            _LOGGER.info("Rain forecast sent successfully in scene slot 2")
+            _LOGGER.info("Graphics-only rain forecast sent successfully in scene slot 2")
         else:
             _LOGGER.error("Failed to send rain forecast")
     except Exception as error:

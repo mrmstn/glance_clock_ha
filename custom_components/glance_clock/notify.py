@@ -469,6 +469,7 @@ class GlanceClockNotificationService(BaseNotificationService):
         start_timestamp: int,
         template: bytes | None = None,
         scene_slot: int = 1,
+        display_mode: int = 24,
     ) -> bool:
         """Send weather forecast data to the Glance Clock."""
         if not self._connection_manager or not self._connection_manager.is_connected:
@@ -534,15 +535,20 @@ class GlanceClockNotificationService(BaseNotificationService):
 
             if not 0 <= scene_slot < 128:
                 raise ValueError("Forecast scene slot must be between 0 and 127")
+            if display_mode not in (8, 16, 24):
+                raise ValueError(
+                    "Forecast display mode must be ring (8), text (16), or both (24)"
+                )
 
-            # Priority: 16 (medium), ring + text: 24, then scene slot.
-            command = bytearray([7, 16, 24, scene_slot])
+            # Priority: 16 (medium), followed by display mode and scene slot.
+            command = bytearray([7, 16, display_mode, scene_slot])
             command.extend(forecast_bytes)
 
             _LOGGER.info(f"Full command: {len(command)} bytes total")
             _LOGGER.info(
-                "Command header: [7, 16, 24, %d] "
-                "(forecast scene, medium priority, ring + text)",
+                "Command header: [7, 16, %d, %d] "
+                "(forecast scene, medium priority)",
+                display_mode,
                 scene_slot,
             )
             _LOGGER.info(f"Command hex: {command.hex()}")

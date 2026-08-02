@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Factory Demo selector for the scene IDs used by firmware 1.6.6 and newer.
 - State Word diagnostic sensor with decoded flags and live notifications.
-- Real 24-hour rain-intensity forecasts in an independent scene slot.
+- Real 24-hour, graphics-only rain-intensity forecasts in an independent scene
+  slot, matching the v2 app's weather clock-face behavior.
 
 ### Fixed
 - Correct scene commands 30/31 to Stop Scenes and Start Scenes.
