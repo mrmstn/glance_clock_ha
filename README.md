@@ -236,6 +236,21 @@ data:
   min_color: "#0000FF"
 ```
 
+### Send Rain Forecast
+
+Send hourly precipitation as a dark-blue to cyan ring in scene slot 2. Values
+are encoded in tenths of a millimetre; the display uses the clock's umbrella
+icon and a static `RAIN` label.
+
+```yaml
+service: glance_clock.send_rain_forecast
+data:
+  weather_entity: weather.home
+  max_value: 2
+  min_color: "#000010"
+  max_color: "#00BFFF"
+```
+
 ### Read Current Settings
 
 Retrieve current device settings.

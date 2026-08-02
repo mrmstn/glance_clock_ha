@@ -467,7 +467,8 @@ class GlanceClockNotificationService(BaseNotificationService):
         min_color: int,
         values: bytes,
         start_timestamp: int,
-        template: bytes | None = None
+        template: bytes | None = None,
+        scene_slot: int = 1,
     ) -> bool:
         """Send weather forecast data to the Glance Clock."""
         if not self._connection_manager or not self._connection_manager.is_connected:
@@ -531,13 +532,19 @@ class GlanceClockNotificationService(BaseNotificationService):
             _LOGGER.info(f"Serialized forecast data: {len(forecast_bytes)} bytes")
             _LOGGER.debug(f"Protobuf data: {forecast_bytes.hex()}")
 
-            # Create command with header matching web project: [7, priority, 24, 1] + forecast data
-            # Priority: 16 (SCENE_PRIORITY_BAND_MEDIUM), 24 hours, slot 1
-            command = bytearray([7, 16, 24, 1])
+            if not 0 <= scene_slot < 128:
+                raise ValueError("Forecast scene slot must be between 0 and 127")
+
+            # Priority: 16 (medium), ring + text: 24, then scene slot.
+            command = bytearray([7, 16, 24, scene_slot])
             command.extend(forecast_bytes)
 
             _LOGGER.info(f"Full command: {len(command)} bytes total")
-            _LOGGER.info(f"Command header: [7, 16, 24, 1] (forecast scene, medium priority, 24h, slot 1)")
+            _LOGGER.info(
+                "Command header: [7, 16, 24, %d] "
+                "(forecast scene, medium priority, ring + text)",
+                scene_slot,
+            )
             _LOGGER.info(f"Command hex: {command.hex()}")
             
             # Send the command

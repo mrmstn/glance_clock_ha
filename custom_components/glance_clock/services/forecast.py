@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
 
 from ..const import DOMAIN
+from ..rain import RAIN_TEMPLATE, encode_rain_values
 from ..utils.color_utils import parse_color_input, interpolate_color
 
 _LOGGER = logging.getLogger(__name__)
@@ -147,6 +148,89 @@ async def handle_send_forecast(hass: HomeAssistant, entry: ConfigEntry, call: Se
         _LOGGER.error(f"✗ Error getting forecast data: {e}")
         import traceback
         _LOGGER.error(f"Full traceback: {traceback.format_exc()}")
+
+
+async def handle_send_rain_forecast(
+    hass: HomeAssistant, entry: ConfigEntry, call: ServiceCall
+):
+    """Send hourly precipitation as a second generic ForecastScene."""
+    entry_data = hass.data[DOMAIN][entry.entry_id]
+    notify_service = hass.data.get(DOMAIN + "_notify", {}).get(entry.entry_id)
+    connection_manager = entry_data.get("connection_manager")
+    weather_entity = call.data.get("weather_entity")
+
+    if not notify_service:
+        _LOGGER.error("Notification service not found for sending rain forecast")
+        return
+    if connection_manager and not hasattr(notify_service, "_connection_manager"):
+        notify_service._connection_manager = connection_manager
+    if not weather_entity or not hass.states.get(weather_entity):
+        _LOGGER.error("Valid weather entity is required for rain forecast")
+        return
+
+    try:
+        response = await hass.services.async_call(
+            "weather",
+            "get_forecasts",
+            {"entity_id": weather_entity, "type": "hourly"},
+            blocking=True,
+            return_response=True,
+        )
+        entity_forecast = response.get(weather_entity, {}) if isinstance(response, dict) else {}
+        forecast = entity_forecast.get("forecast", [])
+        if not forecast:
+            _LOGGER.error("No hourly precipitation forecast is available")
+            return
+
+        forecast_24h = _select_current_forecast_window(forecast)
+        max_mm = float(call.data.get("max_value", 2.0))
+        values, encoded, max_units = encode_rain_values(forecast_24h, max_mm)
+        min_color = parse_color_input(call.data.get("min_color"), 0x000010)
+        max_color = parse_color_input(call.data.get("max_color"), 0x00BFFF)
+
+        _LOGGER.info(
+            "Rain forecast processed: %.1f mm/h peak; tenths-mm values: %s",
+            max(values) / 10,
+            values,
+        )
+        success = await notify_service.async_send_forecast(
+            max_temp=max_units,
+            min_temp=0,
+            max_color=max_color,
+            min_color=min_color,
+            values=encoded,
+            start_timestamp=_calculate_forecast_timestamp(),
+            template=RAIN_TEMPLATE,
+            scene_slot=2,
+        )
+        if success:
+            _LOGGER.info("Rain forecast sent successfully in scene slot 2")
+        else:
+            _LOGGER.error("Failed to send rain forecast")
+    except Exception as error:
+        _LOGGER.exception("Error sending rain forecast: %s", error)
+
+
+def _select_current_forecast_window(forecast: list) -> list:
+    """Select and pad the 24 hourly entries beginning with the current hour."""
+    now = datetime.datetime.now().astimezone().replace(
+        minute=0, second=0, microsecond=0
+    )
+    start = 0
+    for index, hour in enumerate(forecast):
+        dt = _parse_datetime(hour.get("datetime")) if isinstance(hour, dict) else None
+        if dt is None:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=now.tzinfo)
+        if dt.astimezone() >= now:
+            start = index
+            break
+
+    result = list(forecast[start:start + 24])
+    while len(result) < 24:
+        result.append(result[-1] if result else {})
+    return result
 
 
 async def _process_forecast_data(hass: HomeAssistant, forecast: list, weather_state) -> tuple:
