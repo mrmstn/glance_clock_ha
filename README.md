@@ -251,6 +251,24 @@ data:
   max_color: "#00BFFF"
 ```
 
+### Send Daylight Forecast
+
+Send a local, graphics-only 24-hour daylight ring in scene slot 3. Night is
+dark blue and daylight is gold by default. Sunrise and sunset are calculated
+locally from Home Assistant's configured location.
+
+```yaml
+service: glance_clock.send_daylight_forecast
+data:
+  min_color: "#000033"
+  max_color: "#FFB300"
+```
+
+The firmware commands historically called `stop_scenes` and `start_scenes`
+actually move to the previous and next clock face. Prefer the accurately named
+`glance_clock.previous_scene` and `glance_clock.next_scene` services; the old
+names remain available for compatibility.
+
 ### Read Current Settings
 
 Retrieve current device settings.

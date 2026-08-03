@@ -13,6 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 SAFE_COMMANDS = {
     "stop_timer": 10,
     "stop_alarm": 20,
+    "previous_scene": 30,
+    "next_scene": 31,
+    # Backwards-compatible aliases retained for existing automations/entities.
     "stop_scenes": 30,
     "start_scenes": 31,
 }

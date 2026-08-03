@@ -7,7 +7,11 @@ from ..const import DOMAIN
 from .display_settings import handle_update_display_settings, handle_read_current_settings
 from .refresh import handle_refresh_entities
 from .notice import handle_send_notice
-from .forecast import handle_send_forecast, handle_send_rain_forecast
+from .forecast import (
+    handle_send_daylight_forecast,
+    handle_send_forecast,
+    handle_send_rain_forecast,
+)
 from .timer import handle_send_timer
 from .commands import SAFE_COMMANDS, handle_safe_command
 
@@ -35,6 +39,9 @@ async def async_register_services(hass: HomeAssistant, entry: ConfigEntry):
     async def _handle_send_rain_forecast(call: ServiceCall):
         await handle_send_rain_forecast(hass, entry, call)
 
+    async def _handle_send_daylight_forecast(call: ServiceCall):
+        await handle_send_daylight_forecast(hass, entry, call)
+
     async def _handle_send_timer(call: ServiceCall):
         await handle_send_timer(hass, entry, call)
 
@@ -61,6 +68,9 @@ async def async_register_services(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN, "send_rain_forecast", _handle_send_rain_forecast
     )
     hass.services.async_register(
+        DOMAIN, "send_daylight_forecast", _handle_send_daylight_forecast
+    )
+    hass.services.async_register(
         DOMAIN, "send_timer", _handle_send_timer
     )
     for service in SAFE_COMMANDS:
@@ -79,6 +89,7 @@ async def async_unregister_services(hass: HomeAssistant):
         hass.services.async_remove(DOMAIN, "send_notice")
         hass.services.async_remove(DOMAIN, "send_forecast")
         hass.services.async_remove(DOMAIN, "send_rain_forecast")
+        hass.services.async_remove(DOMAIN, "send_daylight_forecast")
         hass.services.async_remove(DOMAIN, "send_timer")
         for service in SAFE_COMMANDS:
             hass.services.async_remove(DOMAIN, service)

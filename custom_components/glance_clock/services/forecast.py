@@ -5,8 +5,11 @@ import time
 import datetime
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.sun import get_astral_event_date
+from homeassistant.util import dt as dt_util
 
 from ..const import DOMAIN
+from ..daylight import DAYLIGHT_MAX, DAYLIGHT_TEMPLATE, encode_daylight_values
 from ..rain import RAIN_TEMPLATE, encode_rain_values
 from ..utils.color_utils import parse_color_input, interpolate_color
 
@@ -210,6 +213,59 @@ async def handle_send_rain_forecast(
             _LOGGER.error("Failed to send rain forecast")
     except Exception as error:
         _LOGGER.exception("Error sending rain forecast: %s", error)
+
+
+async def handle_send_daylight_forecast(
+    hass: HomeAssistant, entry: ConfigEntry, call: ServiceCall
+):
+    """Send the next 24 hours of daylight as a local clock face."""
+    entry_data = hass.data[DOMAIN][entry.entry_id]
+    notify_service = hass.data.get(DOMAIN + "_notify", {}).get(entry.entry_id)
+    connection_manager = entry_data.get("connection_manager")
+
+    if not notify_service:
+        _LOGGER.error("Notification service not found for sending daylight forecast")
+        return
+    if connection_manager and not hasattr(notify_service, "_connection_manager"):
+        notify_service._connection_manager = connection_manager
+
+    try:
+        start = dt_util.now().replace(minute=0, second=0, microsecond=0)
+        dates = {
+            (start + datetime.timedelta(hours=offset)).date()
+            for offset in range(24)
+        }
+        sun_events = {
+            date: (
+                get_astral_event_date(hass, "sunrise", date),
+                get_astral_event_date(hass, "sunset", date),
+            )
+            for date in dates
+        }
+        values, encoded = encode_daylight_values(start, sun_events)
+        min_color = parse_color_input(call.data.get("min_color"), 0x000033)
+        max_color = parse_color_input(call.data.get("max_color"), 0xFFB300)
+
+        _LOGGER.info("Daylight forecast values: %s", values)
+        success = await notify_service.async_send_forecast(
+            max_temp=DAYLIGHT_MAX,
+            min_temp=0,
+            max_color=max_color,
+            min_color=min_color,
+            values=encoded,
+            start_timestamp=_calculate_forecast_timestamp(),
+            template=DAYLIGHT_TEMPLATE,
+            scene_slot=3,
+            display_mode=8,
+        )
+        if success:
+            _LOGGER.info(
+                "Graphics-only daylight forecast sent successfully in scene slot 3"
+            )
+        else:
+            _LOGGER.error("Failed to send daylight forecast")
+    except Exception as error:
+        _LOGGER.exception("Error sending daylight forecast: %s", error)
 
 
 def _select_current_forecast_window(forecast: list) -> list:

@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 - State Word diagnostic sensor with decoded flags and live notifications.
 - Real 24-hour, graphics-only rain-intensity forecasts in an independent scene
   slot, matching the v2 app's weather clock-face behavior.
+- A local 24-hour daylight clock face in scene slot 3.
+- Accurately named Previous Scene and Next Scene service aliases.
 
 ### Fixed
 - Correct scene commands 30/31 to Stop Scenes and Start Scenes.
@@ -15,6 +17,8 @@ All notable changes to this project will be documented in this file.
 - Normalize the Scene characteristic's observed inactive `0x80` status bit.
 - Use four-byte envelopes for update-data and brightness scene commands.
 - Refresh command-button availability when the BLE connection completes.
+- Correct the scene navigation button labels: firmware commands 30 and 31 move
+  to the previous and next clock face rather than stopping or starting scenes.
 
 ## [1.3.0] - 2026-08-02
 ### Added

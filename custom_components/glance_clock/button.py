@@ -33,10 +33,10 @@ async def async_setup_entry(
                 *args, "Stop Alarm", "stop_alarm", "mdi:alarm-off"
             ),
             GlanceClockCommandButton(
-                *args, "Stop Scenes", "stop_scenes", "mdi:stop-circle-outline"
+                *args, "Previous Scene", "stop_scenes", "mdi:skip-previous-outline"
             ),
             GlanceClockCommandButton(
-                *args, "Start Scenes", "start_scenes", "mdi:play-circle-outline"
+                *args, "Next Scene", "start_scenes", "mdi:skip-next-outline"
             ),
         ]
     )
